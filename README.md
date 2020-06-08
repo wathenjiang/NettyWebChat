@@ -47,7 +47,7 @@
 - 测试方式为：使用浏览器打开 resources/static 下的三个 html 文件，并点击登录按钮登录；
 - html 默认连接的服务器地址为：`ws://localhost:8000`；
 
-测试 Demo：
+测试 Demo：分别打开 frontEnd_id1.html 与 frontEnd_id2.html，它们代表着不同的用户。
 
 ![test-demo](images/test-demo.gif)
 
