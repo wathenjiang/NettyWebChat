@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Chat</title>
+</head>
+<style>
+    .form1 {
+        width: 800px;
+        height: 650px;
+        border: 4px solid #33c064;
+        border-radius: 10px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+
+    }
+
+    .form2 {
+        width: 406px;
+        height: 90px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
+
+    h3 {
+        color: #454545;
+        text-align: center;
+        font-size: 26px;
+    }
+
+    textarea {
+        resize: none;
+        font-size: 20px;
+        border-color: #cdcdcd;
+        width: 750px;
+        height: 500px;
+    }
+
+    .msg {
+        width: 324px;
+        height: 32px;
+        text-indent: 10px;
+        font-size: 20px;
+        outline: none;
+    }
+
+    .toWho {
+        width: 146px;
+        height: 32px;
+        text-indent: 10px;
+        font-size: 20px;
+        outline: none;
+    }
+
+    .btn {
+        width: 140px;
+        height: 40px;
+        background-color: #ffffff;
+        border-radius: 6px;
+        border: 1px solid #cdcdcd;
+        font-size: 18px;
+        color: #454545;
+        font-weight: bold;
+    }
+
+
+</style>
+<body>
+<script type="text/javascript">
+    //这里用于构建一个 HTML5 WebSocket 实例,相当于一个特殊应用层的 TCP Socket
+    var ws;
+    var fromUserId = "3";
+    var fromUserName = "Fisherman";
+    if (!window.WebSocket) {
+        window.WebSocket = window.MozWebSocket;
+    }
+    if (window.WebSocket) {
+        //这里的端口号根据 Netty 服务器的地址来，协议为 ws，用于说明其基于 WebSocket 协议(基于 TCP 的应用层协议)
+        ws = new WebSocket("ws://localhost:8000");
+        //下面则定义了许多与 Socket 事件相关的回调函数，很容易想到借此可以实现简单的心跳机制(这里实现了简单的心跳机制)
+        //socket 有消息时的回调（生命周期内会调用多次）
+        ws.onmessage = function (event) {
+            //如果有任何消息来，那么无论是心跳还是正常的数据包，那么都说明连接正常，所以不管怎么样都进行重置，并重启定时发送的任务
+            heartCheck.reset().start();
+            if (event.data === "pong") {
+                // var ta = document.getElementById('responseText');
+                // ta.value = ta.value + '\n' + event.data
+                // 心跳包的数据可以在前端什么都不展示，除非出错
+            } else {
+                let ta = document.getElementById('responseText');
+                ta.value = ta.value + '\n' + event.data
+            }
+
+        };
+        //socket 开启状态时的回调（生命周期内只会调用一次，可以用于启动一个心跳线程）
+        ws.onopen = function (event) {
+            var ta = document.getElementById('responseText');
+            ta.value = "连接开启!";
+            heartCheck.reset().start();
+        };
+        //socket 关闭状态时的回调（生命周期内只会调用一次）
+        ws.onclose = function (event) {
+            var ta = document.getElementById('responseText');
+            ta.value = ta.value + "未连接";
+        };
+    } else {
+        alert("你的浏览器不支持 WebSocket！");
+    }
+
+    //登录命令
+    function login() {
+        if (!window.WebSocket) {
+            return;
+        }
+        if (ws.readyState === WebSocket.OPEN) {
+            let data = {
+                //这里固定死了用户 id 和用户名
+                "type": "LOGIN",
+                "userId": fromUserId,
+                "userName": fromUserName
+            };
+            ws.send(JSON.stringify(data));
+        } else {
+            alert("连接没有开启.");
+        }
+    }
+
+    //发给某一个人
+    function sendToOne(to, message) {
+        if (!window.WebSocket) {
+            return;
+        }
+        //如果输入值为空，那么直接返回
+        if (checkIfBlankInput(to, message)) {
+            return;
+        }
+
+        if (ws.readyState === WebSocket.OPEN) {
+            let data = {
+                //这里固定死了自己的用户 id 和用户名，以及对方的用户 id
+                "type": "SEND_TO_ONE",
+                "fromUserId": fromUserId,
+                "fromUserName": fromUserName,
+                "toUserId": to,
+                "message": message
+            };
+            ws.send(JSON.stringify(data));
+
+        } else {
+            alert("连接没有开启.");
+        }
+    }
+
+
+    //此方法被 发送给自己 按钮调用，用于发送文本框的文字给服务端，然后示意服务端转发给自己（也可以优化，发送给谁的逻辑可以使用一个方法抽象出来，而不必分两个发送给谁的方法）
+    function createGroup(groupId,message) {
+        if (!window.WebSocket) {
+            return;
+        }
+        //如果输入值为空，那么直接返回
+        let to = fromUserId;
+        if (checkIfBlankInput(to, message)) {
+            return;
+        }
+
+        if (ws.readyState === WebSocket.OPEN) {
+            let data = {
+                "type": "CREATE_GROUP",
+                "fromUserId": fromUserId,
+                "fromUserName": fromUserName,
+                "groupId":groupId,
+                "message": message
+            }
+            ws.send(JSON.stringify(data));
+        } else {
+            alert("连接没有开启.");
+        }
+    }
+
+    //此方法被 send 按钮调用，用于发送文本框的文字给服务端，然后示意服务端转发给群里的所有用户
+    function sendToGroup(to, message) {
+        if (!window.WebSocket) {
+            return;
+        }
+        //如果输入值为空，那么直接返回
+        if (checkIfBlankInput(to, message)) {
+            return;
+        }
+        if (ws.readyState === WebSocket.OPEN) {
+            let data = {
+                "type": "SEND_TO_GROUP",
+                "fromUserId": fromUserId,
+                "fromUserName": fromUserName,
+                "toGroupId": to,
+                "message": message
+            }
+            ws.send(JSON.stringify(data));
+        } else {
+            alert("连接没有开启.");
+        }
+    }
+
+    //检查是否为空输入
+    function checkIfBlankInput(to, message) {
+        let n = Number(to);
+        if (isNaN(n) || to.length === 0) {
+            alert("请输入正确的用户 id 号");
+            return true;
+        } else if (message.replace(/(^s*)|(s*$)/g, "").length === 0) {
+            alert("不能发送空消息");
+            return true;
+        }
+        return false;
+    }
+
+
+    //心跳检测线程
+    var heartCheck = {
+        timeout: 4000,        //4 秒
+        timeoutObj: null,
+        serverTimeoutObj: null,
+        reset: function () {
+            clearTimeout(this.timeoutObj);
+            clearTimeout(this.serverTimeoutObj);
+            return this;
+        },
+        start: function () {
+            var self = this;
+            this.timeoutObj = setTimeout(function () {
+                //这里发送一个心跳，后端收到后，返回一个心跳消息，
+                //onmessage拿到返回的心跳就说明连接正常
+                ws.send("ping");
+                console.log("ping!")
+                self.serverTimeoutObj = setTimeout(function () {//如果超过一定时间还没重置，说明后端主动断开了
+                    ws.close();//如果onclose会执行reconnect，我们执行ws.close()就行了.如果直接执行reconnect 会触发onclose导致重连两次
+                    alert("连接超时，请刷新页面重试！");
+                }, self.timeout)
+            }, this.timeout)
+        }
+    }
+
+    window.onbeforeunload = function (event) {
+        event.returnValue = "刷新提醒";
+    };
+</script>
+<form onsubmit="return false;" class="form1">
+    <h3> 聊天室 Demo</h3>
+    <textarea id="responseText"></textarea>
+    <br>
+    <table>
+        <tr>
+            <td>
+                <input class='toWho' type="text" id="toWho" placeholder='userId/groupId' value="">
+            </td>
+            <td>
+                <input class='msg' type="text" id="message" placeholder='消息/群成员(1,2,...,n)' value="">
+            </td>
+        </tr>
+    </table>
+</form>
+
+<form class="form2">
+    <input class='btn' type="button" value="登录"
+           onclick="login()">
+    <input class='btn' type="button" value="发送"
+           onclick="sendToOne(document.getElementById('toWho').value,document.getElementById('message').value)">
+    <input class='btn' type="button" value="创建群组"
+           onclick="createGroup(document.getElementById('toWho').value,document.getElementById('message').value)">
+    <input class='btn' type="button" value="发送到群组"
+           onclick="sendToGroup(document.getElementById('toWho').value,document.getElementById('message').value)">
+</form>
+<br>
+<br>
+</body>
+</html>
