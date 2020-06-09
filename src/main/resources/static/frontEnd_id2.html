@@ -106,7 +106,7 @@
         //socket 关闭状态时的回调（生命周期内只会调用一次）
         ws.onclose = function (event) {
             var ta = document.getElementById('responseText');
-            ta.value = ta.value + "未连接";
+            ta.value = ta.value +'\n'  +"连接断开！";
         };
     } else {
         alert("你的浏览器不支持 WebSocket！");
@@ -221,17 +221,25 @@
 
     //心跳检测线程
     var heartCheck = {
-        timeout: 4000,//4秒
+        timeout: 4000,        //4 秒
         timeoutObj: null,
-        reset: function(){
+        serverTimeoutObj: null,
+        reset: function () {
             clearTimeout(this.timeoutObj);
+            clearTimeout(this.serverTimeoutObj);
             return this;
         },
-        start: function(){
-            this.timeoutObj = setTimeout(function(){
+        start: function () {
+            var self = this;
+            this.timeoutObj = setTimeout(function () {
                 //这里发送一个心跳，后端收到后，返回一个心跳消息，
                 //onmessage拿到返回的心跳就说明连接正常
                 ws.send("ping");
+                console.log("ping!")
+                self.serverTimeoutObj = setTimeout(function () {//如果超过一定时间还没重置，说明后端主动断开了
+                    ws.close();//如果onclose会执行reconnect，我们执行ws.close()就行了.如果直接执行reconnect 会触发onclose导致重连两次
+                    alert("连接超时，请刷新页面重试！");
+                }, self.timeout)
             }, this.timeout)
         }
     }

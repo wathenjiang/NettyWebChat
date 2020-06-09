@@ -106,7 +106,7 @@
         //socket 关闭状态时的回调（生命周期内只会调用一次）
         ws.onclose = function (event) {
             var ta = document.getElementById('responseText');
-            ta.value = ta.value + "未连接";
+            ta.value = ta.value +'\n'  +"连接断开！";
         };
     } else {
         alert("你的浏览器不支持 WebSocket！");
