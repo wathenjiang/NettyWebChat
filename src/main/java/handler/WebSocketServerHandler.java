@@ -2,16 +2,14 @@ package handler;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.CharsetUtil;
+import server.WebSocketServer;
 import session.SessionUtil;
 
 import static io.netty.handler.codec.http.HttpUtil.isKeepAlive;
@@ -21,9 +19,15 @@ import static io.netty.handler.codec.http.HttpUtil.setContentLength;
  * @author SpongeCaptain
  * @date 2020/6/6 23:09
  */
+@ChannelHandler.Sharable
 public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> {
 
     private WebSocketServerHandshaker handShaker;
+
+    public static final WebSocketServerHandler INSTANCE = new WebSocketServerHandler();
+
+    protected WebSocketServerHandler() {
+    }
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
@@ -72,7 +76,7 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
         if ("ping".equals(reqMsg)) {
 //            System.out.println(reqMsg);
             ctx.channel().write(new TextWebSocketFrame("pong"));
-        }else{
+        } else {
             /** 对文本信息处理，并响应客户端：将字符串向后传播 **/
 //            System.out.println(reqMsg);
             ctx.fireChannelRead(reqMsg);
@@ -99,7 +103,7 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
         } else {
             /** 握手建立连接(这会负责向客户端发送 HTTP 响应：表示协议升级成功) **/
             final ChannelFuture handshake = handShaker.handshake(ctx.channel(), req);
-            if (handshake.isSuccess()){
+            if (handshake.isSuccess()) {
                 System.out.println("从 HTTP 升级为 WebSocket 协议成功！");
             }
         }

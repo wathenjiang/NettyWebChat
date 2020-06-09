@@ -61,13 +61,13 @@ public class WebSocketServer {
                                     //用户支持服务器传输比较大的文件数据
                                     .addLast("Http Chunked",new ChunkedWriteHandler())
                                     //这是 WebSocket 处理器。
-                                    .addLast("Socket Server",new WebSocketServerHandler())
+                                    .addLast("Socket Server", WebSocketServerHandler.INSTANCE)
                                     //负责登录逻辑
-                                    .addLast("LoginHandler",  new LoginHandler())
+                                    .addLast("LoginHandler",  LoginHandler.INSTANCE)
                                     //负责登录逻辑后的状态检查，如果已经登录了，那么就会将此 Handler 移除
-                                    .addLast("AuthHandler" ,new AuthHandler())
+                                    .addLast("AuthHandler" ,AuthHandler.INSTANCE)
                                     //负责一般消息的解析
-                                    .addLast("Json Server",new JsonServerHandler());
+                                    .addLast("Json Server",JsonServerHandler.INSTANCE);
                         }
                     });
             ChannelFuture f = b.bind(port).sync();
