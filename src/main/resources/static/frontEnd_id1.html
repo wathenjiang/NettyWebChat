@@ -142,7 +142,7 @@
 
         if (ws.readyState === WebSocket.OPEN) {
             let data = {
-                //这里固定死了自己的用户 id 和用户名，以及对方的用户 id
+                //这里固定死了自己的用户 id 和用户名
                 "type": "SEND_TO_ONE",
                 "fromUserId": fromUserId,
                 "fromUserName": fromUserName,
